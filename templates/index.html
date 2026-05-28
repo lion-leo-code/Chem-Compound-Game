@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Molecule Matchmaker: Atom Assembly Line!</title>
+    <!-- Tailwind CSS for utility classes -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Fredoka+One&display=swap" rel="stylesheet">
+    <style>
+        /* Custom CSS for game specific styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4c3; /* Light lime background */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow: hidden; /* Prevent scrollbars */
+            animation: pulseBackground 15s infinite alternate; /* Pulsing background animation */
+        }
+
+        .game-container {
+            background-color: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 900px;
+            width: 100%;
+        }
+
+        h1 {
+            font-family: 'Fredoka One', cursive;
+            color: #689f38; /* Dark green */
+            font-size: 2.5em;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            padding: 10px 0;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #33691e; /* Even darker green */
+        }
+
+        .target-molecule-display {
+            background-color: #e8f5e9; /* Light green for target area */
+            border: 3px dashed #388e3c; /* Green dashed border */
+            border-radius: 15px;
+            padding: 15px 25px;
+            margin-bottom: 20px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 2em;
+            color: #1b5e20;
+            text-align: center;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        canvas {
+            background-color: #c5e1a5; /* Lighter green for atom pool */
+            border: 5px solid #689f38; /* Dark green border */
+            border-radius: 15px;
+            display: block;
+            touch-action: none; /* Prevent default touch actions like scrolling */
+        }
+
+        .game-message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1.3em;
+            font-weight: bold;
+            text-align: center;
+            width: 100%;
+        }
+
+        .message-success {
+            background-color: #e8f5e9; /* Light green */
+            color: #2e7d32; /* Dark green */
+            border: 2px solid #2e7d32;
+        }
+
+        .message-error {
+            background-color: #ffebee; /* Light red */
+            color: #c62828; /* Dark red */
+            border: 2px solid #c62828;
+        }
+
+        .message-info {
+            background-color: #fffde7; /* Light yellow */
+            color: #fbc02d; /* Dark yellow */
+            border: 2px solid #fbc02d;
+        }
+
+        .button-group {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .game-button {
+            background-color: #aed581; /* Light green button */
+            color: #33691e;
+            padding: 12px 25px;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            font-family: 'Fredoka One', cursive;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .game-button:hover {
+            background-color: #9ccc65; /* Darker light green */
+            transform: translateY(-2px);
+        }
+
+        .game-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        #combineButton {
+            background-color: #ffb300; /* Amber for combine button */
+            color: white;
+        }
+        #combineButton:hover {
+            background-color: #fb8c00;
+        }
+
+        /* Heart icon styling for animation */
+        .heart-icon {
+            display: inline-block;
+            margin: 0 2px;
+            font-size: 1.2em;
+            color: #e91e63; /* Pink heart color */
+            animation: fadeInHeart 0.3s ease-out; /* Initial fade in */
+        }
+
+        /* Keyframe for heart breaking animation */
+        @keyframes heartBreak {
+            0% { transform: scale(1) rotate(0deg); opacity: 1; }
+            50% { transform: scale(1.2) rotate(15deg); opacity: 0.8; }
+            100% { transform: scale(0) rotate(45deg); opacity: 0; }
+        }
+
+        /* Keyframe for pulsing background */
+        @keyframes pulseBackground {
+            0% { background-color: #f0f4c3; } /* Light lime */
+            25% { background-color: #ffe0b2; } /* Light orange */
+            50% { background-color: #bbdefb; } /* Light blue */
+            75% { background-color: #e1bee7; } /* Light purple */
+            100% { background-color: #f0f4c3; }
+        }
+
+        /* Flash overlay for red screen effect */
+        #flashOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: transparent; /* Start transparent */
+            opacity: 0;
+            pointer-events: none; /* Allows clicks to pass through when not active */
+            z-index: 9999; /* Ensure it's on top */
+            transition: background-color 0.2s ease-out, opacity 0.2s ease-out; /* For quick flash */
+        }
+
+        #flashOverlay.flash-active {
+            background-color: rgba(255, 0, 0, 0.5); /* Red with some transparency */
+            opacity: 1;
+        }
+
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+            .game-info {
+                font-size: 1em;
+            }
+            .game-button {
+                padding: 10px 20px;
+                font-size: 1em;
+            }
+            .target-molecule-display {
+                font-size: 1.5em;
+                min-height: 60px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.8em;
+            }
+            .game-container {
+                padding: 15px;
+            }
+            .game-info {
+                flex-direction: column;
+                align-items: center;
+                gap: 5px;
+            }
+            .game-message {
+                font-size: 1.1em;
+            }
+            .button-group {
+                flex-direction: column;
+                width: 100%;
+            }
+            .game-button {
+                width: 100%;
+            }
+            .target-molecule-display {
+                font-size: 1.2em;
+                min-height: 50px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>⚛️ Molecule Matchmaker: Atom Assembly Line! 🛠️</h1>
+        <p class="text-lg text-gray-700 mb-4">Your mission: Build the target molecule by clicking on atoms below and then clicking 'Combine!'</p>
+
+        <div class="game-info">
+            <div id="scoreDisplay">Score: 0</div>
+            <div id="levelDisplay">Level: 1</div>
+            <div id="livesDisplay" class="flex items-center">Lives: </div>
+        </div>
+
+        <div id="targetMoleculeDisplay" class="target-molecule-display">
+            Target: Click 'Start Game'
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="gameMessage" class="game-message message-info">
+            Click 'Start Game' to begin building molecules!
+        </div>
+
+        <div class="button-group">
+            <button id="startGameButton" class="game-button">Start Game</button>
+            <button id="combineButton" class="game-button hidden">Combine!</button>
+            <button id="clearSelectionButton" class="game-button hidden">Clear Selection</button>
+            <button id="restartGameButton" class="game-button hidden">Restart Game</button>
+        </div>
+    </div>
+    <div id="flashOverlay"></div> <!-- Moved flash overlay div to its correct HTML position -->
+
+    <script>
+        // --- Game Data (injected from Python Flask backend) ---
+        let elementNames;
+        let elementSymbols;
+        let valencies;
+        let NOBLE_GASES;
+        let compounds;
+
+        try {
+            // JSON.parse is used to correctly interpret the JSON string sent from Flask
+            elementNames = JSON.parse('{{ element_names | safe }}');
+            elementSymbols = JSON.parse('{{ element_symbols | safe }}');
+            valencies = JSON.parse('{{ valencies | safe }}');
+            // Noble gases are converted to an array in Python, then parsed and converted to a Set in JS
+            NOBLE_GASES = new Set(JSON.parse('{{ noble_gases | safe }}'));
+            compounds = JSON.parse('{{ compounds_data | safe }}');
+        } catch (e) {
+            console.error("Error parsing game data from backend, using dummy data:", e);
+            // Dummy data for testing if backend injection fails
+            elementNames = ["Hydrogen", "Oxygen", "Carbon", "Sodium", "Chlorine"];
+            elementSymbols = ["H", "O", "C", "Na", "Cl"];
+            valencies = { "H": 1, "O": 2, "C": 4, "Na": 1, "Cl": 1 };
+            NOBLE_GASES = new Set(["He", "Ne", "Ar", "Kr", "Xe", "Rn"]);
+            compounds = [
+                { "name": "Water", "formula": "H2O", "atoms": { "H": 2, "O": 1 } },
+                { "name": "Carbon Dioxide", "formula": "CO2", "atoms": { "C": 1, "O": 2 } },
+                { "name": "Methane", "formula": "CH4", "atoms": { "C": 1, "H": 4 } },
+                { "name": "Sodium Chloride", "formula": "NaCl", "atoms": { "Na": 1, "Cl": 1 } }
+            ];
+            // Display an error message to the user
+            gameMessage.textContent = "Warning: Game data failed to load. Using default data. Please inform the developer.";
+            gameMessage.className = "game-message message-error";
+        }
+
+
+        // --- Game Core Logic ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const levelDisplay = document.getElementById('levelDisplay');
+        const livesDisplay = document.getElementById('livesDisplay'); // New: Lives display
+        const targetMoleculeDisplay = document.getElementById('targetMoleculeDisplay');
+        const gameMessage = document.getElementById('gameMessage');
+        const startGameButton = document.getElementById('startGameButton');
+        const combineButton = document.getElementById('combineButton');
+        const clearSelectionButton = document.getElementById('clearSelectionButton');
+        const restartGameButton = document.getElementById('restartGameButton');
+        const flashOverlay = document.getElementById('flashOverlay'); // Get the new flash overlay
+
+        // Game settings
+        const ATOM_BASE_RADIUS = 25; // Base radius for medium atoms
+        const ATOM_SPAWN_INTERVAL = 1000; // milliseconds (Hasten spawn rate)
+        const INITIAL_MAX_ATOMS_ON_SCREEN = 20; // Initial max atoms
+        const HOLDING_AREA_Y = 0.7; // Y-coordinate for the holding area (percentage of canvas height)
+        const MAX_LIVES = 3; // Changed to 3 lives
+
+        let gameRunning = false;
+        let score = 0;
+        let level = 1;
+        let lives = MAX_LIVES; // New: Current lives
+        let atomsOnScreen = []; // Atoms available for selection
+        let selectedAtoms = []; // Atoms clicked by the player
+        let targetCompound = null; // The current compound to build
+        let lastSpawnTime = 0;
+        let animationFrameId;
+
+        // New variables for managing unique compound suggestions
+        let shuffledCompounds = [];
+        let currentCompoundIndex = 0;
+
+        // Colors for different element types (simplified for visual appeal)
+        const atomColors = {
+            "H": "#FFDDC1", // Light Orange/Peach
+            "O": "#FFABAB", // Light Red/Pink
+            "C": "#AEC6CF", // Blue-Gray
+            "N": "#B2F0B2", // Light Green
+            "Na": "#FFDB58", // Mustard Yellow
+            "Cl": "#C8A2C8", // Lavender
+            "Mg": "#ADD8E6", // Light Blue
+            "Al": "#D3D3D3", // Light Gray
+            "S": "#FFFF99", // Pale Yellow
+            "default": "#E0BBE4" // A soft purple for others
+        };
+
+        // Define atom sizes based on symbol
+        const atomSizes = {
+            "H": ATOM_BASE_RADIUS * 0.7,  // Smaller
+            "C": ATOM_BASE_RADIUS * 1.0,  // Medium
+            "N": ATOM_BASE_RADIUS * 1.0,
+            "O": ATOM_BASE_RADIUS * 1.0,
+            "Na": ATOM_BASE_RADIUS * 1.3, // Larger
+            "Cl": ATOM_BASE_RADIUS * 1.3,
+            "Mg": ATOM_BASE_RADIUS * 1.2,
+            "Al": ATOM_BASE_RADIUS * 1.2,
+            "S": ATOM_BASE_RADIUS * 1.1,
+            "default": ATOM_BASE_RADIUS // Default size for others
+        };
+
+        /**
+         * Represents an Atom Bubble in the game.
+         * @class
+         */
+        class Atom {
+            constructor(x, y, elementSymbol, isSelected = false) {
+                this.x = x;
+                this.y = y;
+                this.symbol = elementSymbol;
+                this.radius = atomSizes[elementSymbol] || atomSizes["default"]; // Set radius based on symbol
+                // Ensure the element symbol exists in elementSymbols before trying to get its name
+                const elementIndex = elementSymbols.indexOf(elementSymbol);
+                this.name = elementIndex !== -1 ? elementNames[elementIndex] : "Unknown Element";
+                this.baseColor = atomColors[elementSymbol] || atomColors["default"]; // Store base color
+                this.isSelected = isSelected;
+                this.vx = (Math.random() - 0.5) * 0.5; // Small random horizontal movement
+                this.vy = 0.5 + (level * 0.05); // Speed increases with level
+            }
+
+            /**
+             * Draws the atom on the canvas with a gradient and shadow.
+             */
+            draw() {
+                ctx.save(); // Save current canvas state
+
+                // Apply shadow
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+                ctx.shadowBlur = 5;
+                ctx.shadowOffsetX = 2;
+                ctx.shadowOffsetY = 2;
+
+                // Create radial gradient for bubble effect
+                const gradient = ctx.createRadialGradient(
+                    this.x - this.radius * 0.3, this.y - this.radius * 0.3, this.radius * 0.1, // Inner circle (light source)
+                    this.x, this.y, this.radius // Outer circle
+                );
+                gradient.addColorStop(0, '#FFFFFF'); // Highlight
+                gradient.addColorStop(0.2, this.baseColor);
+                gradient.addColorStop(1, this.baseColor);
+
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                ctx.strokeStyle = this.isSelected ? '#FF0000' : '#333'; // Red border if selected
+                ctx.lineWidth = this.isSelected ? 3 : 2;
+                ctx.stroke();
+                ctx.closePath();
+
+                ctx.restore(); // Restore canvas state (removes shadow for text)
+
+                // Draw element symbol
+                ctx.fillStyle = this.isSelected ? '#FF0000' : '#333';
+                ctx.font = `${this.radius * 0.8}px 'Fredoka One'`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.symbol, this.x, this.y);
+            }
+
+            /**
+             * Updates the atom's position.
+             */
+            update() {
+                if (!this.isSelected) { // Only unselected atoms move
+                    this.x += this.vx;
+                    this.y += this.vy;
+
+                    // Bounce off horizontal walls
+                    if (this.x - this.radius < 0 || this.x + this.radius > canvas.width) {
+                        this.vx *= -1;
+                    }
+                    // No longer stopping at HOLDING_AREA_Y here.
+                    // The check for "getting through" will be in updateGame.
+                }
+            }
+        }
+
+        /**
+         * Resizes the canvas to fit the window.
+         */
+        function resizeCanvas() {
+            canvas.width = Math.min(window.innerWidth * 0.9, 800);
+            canvas.height = Math.min(window.innerHeight * 0.7, 600);
+            // Adjust holding area y if needed
+            positionSelectedAtoms();
+        }
+
+        /**
+         * Shuffles an array in place (Fisher-Yates algorithm).
+         * @param {Array} array - The array to shuffle.
+         */
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        /**
+         * Selects the next target compound from the shuffled list.
+         * Reshuffles if all compounds have been used.
+         * @returns {object} The chosen compound object.
+         */
+        function getRandomTargetCompound() {
+            if (currentCompoundIndex >= shuffledCompounds.length) {
+                // All compounds have been used, reshuffle
+                shuffleArray(shuffledCompounds);
+                currentCompoundIndex = 0;
+            }
+            const compound = shuffledCompounds[currentCompoundIndex];
+            currentCompoundIndex++;
+            return compound;
+        }
+
+        /**
+         * Spawns new atoms on the canvas.
+         * Includes atoms needed for the target compound and some distractors.
+         */
+        function spawnAtoms() {
+            // Calculate max atoms based on level
+            const currentMaxAtoms = INITIAL_MAX_ATOMS_ON_SCREEN + (level * 2); // Increase max atoms by 2 per level
+
+            if (atomsOnScreen.length >= currentMaxAtoms) return;
+
+            // Spawn atoms for the target compound if not enough are present
+            const currentAtomCounts = {};
+            atomsOnScreen.forEach(atom => {
+                if (!atom.isSelected) {
+                    currentAtomCounts[atom.symbol] = (currentAtomCounts[atom.symbol] || 0) + 1;
+                }
+            });
+
+            if (targetCompound) {
+                for (const symbol in targetCompound.atoms) {
+                    const needed = targetCompound.atoms[symbol];
+                    const available = currentAtomCounts[symbol] || 0;
+                    if (available < needed) {
+                        // Spawn a needed atom
+                        const x = Math.random() * (canvas.width - ATOM_BASE_RADIUS * 2) + ATOM_BASE_RADIUS; // Use base radius for spawn position
+                        const y = ATOM_BASE_RADIUS; // Start at the top
+                        atomsOnScreen.push(new Atom(x, y, symbol)); // Pass symbol directly
+                        return; // Spawn one at a time
+                    }
+                }
+            }
+
+            // If all needed atoms are present or no target, spawn a random non-noble gas atom as a distractor
+            const randomElementIndex = Math.floor(Math.random() * elementSymbols.length);
+            const randomSymbol = elementSymbols[randomElementIndex];
+
+            // Avoid noble gases
+            if (!NOBLE_GASES.has(randomSymbol)) {
+                const x = Math.random() * (canvas.width - ATOM_BASE_RADIUS * 2) + ATOM_BASE_RADIUS; // Use base radius for spawn position
+                const y = ATOM_BASE_RADIUS;
+                atomsOnScreen.push(new Atom(x, y, randomSymbol)); // Pass symbol directly
+            }
+        }
+
+        /**
+         * Handles mouse click on the canvas to select/deselect atoms.
+         * @param {MouseEvent} event - The mouse event.
+         */
+        function handleCanvasClick(event) {
+            if (!gameRunning) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const clickY = event.clientY - rect.top;
+
+            // Check if an atom on screen was clicked
+            for (let i = atomsOnScreen.length - 1; i >= 0; i--) {
+                const atom = atomsOnScreen[i];
+                const dx = atom.x - clickX;
+                const dy = atom.y - clickY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < atom.radius) {
+                    if (atom.isSelected) {
+                        // Deselect: move from selectedAtoms back to atomsOnScreen
+                        atom.isSelected = false;
+                        selectedAtoms = selectedAtoms.filter(a => a !== atom);
+                        atomsOnScreen.push(atom); // Add back to general pool for drawing
+                    } else {
+                        // Select: move from atomsOnScreen to selectedAtoms
+                        atom.isSelected = true;
+                        selectedAtoms.push(atom);
+                        atomsOnScreen.splice(i, 1); // Remove from general pool
+                    }
+                    positionSelectedAtoms(); // Reposition selected atoms
+                    return; // Only process one click
+                }
+            }
+        }
+
+        /**
+         * Positions selected atoms neatly in the holding area.
+         */
+        function positionSelectedAtoms() {
+            // Calculate total width needed for selected atoms
+            let totalWidth = 0;
+            selectedAtoms.forEach(atom => {
+                totalWidth += atom.radius * 2.5; // Atom width + spacing
+            });
+
+            const startX = canvas.width / 2 - totalWidth / 2;
+            const startY = canvas.height * HOLDING_AREA_Y + ATOM_BASE_RADIUS * 1.5; // Use base radius for consistent Y
+            let currentX = startX;
+
+            selectedAtoms.forEach((atom, index) => {
+                atom.x = currentX + atom.radius; // Center atom at currentX
+                atom.y = startY;
+                currentX += atom.radius * 2.5; // Move cursor for next atom
+            });
+        }
+
+
+        /**
+         * Checks if the selected atoms match the target compound.
+         * @returns {boolean} True if they match, false otherwise.
+         */
+        function checkCompoundMatch() {
+            if (!targetCompound) return false;
+
+            const selectedCounts = {};
+            selectedAtoms.forEach(atom => {
+                selectedCounts[atom.symbol] = (selectedCounts[atom.symbol] || 0) + 1;
+            });
+
+            // Check if all required atoms are present in correct quantities
+            for (const symbol in targetCompound.atoms) {
+                if (selectedCounts[symbol] !== targetCompound.atoms[symbol]) {
+                    return false;
+                }
+            }
+
+            // Check if there are any extra atoms selected
+            for (const symbol in selectedCounts) {
+                if (selectedCounts[symbol] !== (targetCompound.atoms[symbol] || 0)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /**
+         * Handles the "Combine!" button click.
+         */
+        function handleCombine() {
+            if (!gameRunning) return;
+
+            if (checkCompoundMatch()) {
+                displayGameMessage(`🎉 You built ${targetCompound.formula} (${targetCompound.name})! Awesome!`, 'success');
+                score += 200 * level;
+                const oldLevel = level;
+                level = Math.floor(score / 1000) + 1; // Level up every 1000 points
+                if (level > oldLevel) {
+                    displayGameMessage(`Level Up! You're now on Level ${level}!`, 'info');
+                }
+                updateScore();
+                startNextRound();
+            } else {
+                lives--; // Lose a life for incorrect combination
+                flashScreenRed(); // Flash screen red
+                // Animate heart breaking
+                const hearts = livesDisplay.querySelectorAll('.heart-icon');
+                if (hearts.length > 0) {
+                    const lastHeart = hearts[hearts.length - 1];
+                    lastHeart.style.animation = 'heartBreak 0.5s forwards'; // Apply animation
+                    setTimeout(() => {
+                        lastHeart.remove(); // Remove after animation
+                    }, 500); // Match animation duration
+                }
+
+                updateScore(); // Update lives display
+                if (lives <= 0) {
+                    endGame(`Game Over! You ran out of lives!`);
+                } else {
+                    displayGameMessage(`Oops! That's not the right combination for the target molecule. You have ${lives} lives left!`, 'error');
+                    // Reset screen to start again after a wrong combination
+                    startNextRound();
+                }
+            }
+        }
+
+        /**
+         * Clears the current selection of atoms.
+         */
+        function clearSelection() {
+            selectedAtoms.forEach(atom => {
+                atom.isSelected = false;
+                atom.vx = (Math.random() - 0.5) * 0.5; // Give them back some random movement
+                atom.vy = 0.5 + (level * 0.05); // Ensure they fall at current level speed
+                atomsOnScreen.push(atom); // Return to the pool
+            });
+            selectedAtoms = [];
+            positionSelectedAtoms(); // Re-arrange in pool if needed
+        }
+
+        /**
+         * Displays a message to the user.
+         * @param {string} message - The message text.
+         * @param {string} type - 'success', 'error', or 'info'.
+         */
+        function displayGameMessage(message, type) {
+            gameMessage.textContent = message;
+            gameMessage.className = `game-message message-${type}`;
+            setTimeout(() => {
+                if (gameRunning) {
+                    gameMessage.textContent = "Keep building molecules!";
+                    gameMessage.className = "game-message message-info";
+                }
+            }, 3000);
+        }
+
+        /**
+         * Flashes the screen red using the overlay.
+         */
+        function flashScreenRed() {
+            flashOverlay.classList.add('flash-active');
+            setTimeout(() => {
+                flashOverlay.classList.remove('flash-active');
+            }, 250); // Duration for the active state of the flash (0.2 seconds)
+        }
+
+        /**
+         * Updates the game state in each frame.
+         */
+        function updateGame() {
+            if (!gameRunning) return;
+
+            // Update atoms on screen
+            atomsOnScreen.forEach(atom => atom.update());
+
+            // Check for atoms "getting through" the bottom
+            for (let i = atomsOnScreen.length - 1; i >= 0; i--) {
+                const atom = atomsOnScreen[i];
+                // If atom goes off bottom screen (below the holding area)
+                if (!atom.isSelected && atom.y - atom.radius > canvas.height) {
+                    atomsOnScreen.splice(i, 1); // Remove the atom
+                    lives--; // Lose a life
+                    flashScreenRed(); // Flash screen red
+                    // Animate heart breaking
+                    const hearts = livesDisplay.querySelectorAll('.heart-icon');
+                    if (hearts.length > 0) {
+                        const lastHeart = hearts[hearts.length - 1];
+                        lastHeart.style.animation = 'heartBreak 0.5s forwards'; // Apply animation
+                        setTimeout(() => {
+                            lastHeart.remove(); // Remove after animation
+                        }, 500); // Match animation duration
+                    }
+                    updateScore();
+                    if (lives <= 0) {
+                        endGame(`Game Over! Too many atoms escaped!`);
+                        return;
+                    } else {
+                        displayGameMessage(`An atom escaped! You have ${lives} lives left!`, 'error');
+                    }
+                }
+            }
+
+            // Spawn new atoms periodically
+            const currentTime = Date.now();
+            // Spawn interval decreases with level
+            const currentSpawnInterval = ATOM_SPAWN_INTERVAL / (1 + level * 0.75); // Hastened spawn rate
+            const currentMaxAtoms = INITIAL_MAX_ATOMS_ON_SCREEN + (level * 2); // Max atoms increases with level
+
+            if (currentTime - lastSpawnTime > currentSpawnInterval && atomsOnScreen.length < currentMaxAtoms) {
+                spawnAtoms();
+                lastSpawnTime = currentTime;
+            }
+        }
+
+        /**
+         * Draws all game elements on the canvas.
+         */
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+
+            // Draw atoms on screen
+            for (const atom of atomsOnScreen) {
+                atom.draw();
+            }
+
+            // Draw selected atoms
+            for (const atom of selectedAtoms) {
+                atom.draw();
+            }
+
+            // The horizontal bar has been removed as per the request.
+            // ctx.beginPath();
+            // ctx.moveTo(0, canvas.height * HOLDING_AREA_Y);
+            // ctx.lineTo(canvas.width, canvas.height * HOLDING_AREA_Y);
+            // ctx.strokeStyle = '#689f38'; // Dark green line
+            // ctx.lineWidth = 3;
+            // ctx.stroke();
+            // ctx.closePath();
+        }
+
+        /**
+         * The main game loop.
+         */
+        function gameLoop() {
+            updateGame();
+            drawGame();
+            if (gameRunning) {
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        /**
+         * Updates the score and level display.
+         */
+        function updateScore() {
+            scoreDisplay.textContent = `Score: ${score}`;
+            levelDisplay.textContent = `Level: ${level}`;
+            // Update lives display with individual heart elements
+            livesDisplay.innerHTML = 'Lives: '; // Clear existing hearts
+            for (let i = 0; i < lives; i++) {
+                const heartSpan = document.createElement('span');
+                heartSpan.textContent = '❤️';
+                heartSpan.classList.add('heart-icon');
+                livesDisplay.appendChild(heartSpan);
+            }
+        }
+
+        /**
+         * Starts a new game round.
+         */
+        function startNextRound() {
+            targetCompound = getRandomTargetCompound(); // Get the next unique compound
+            // Display only the compound name in red
+            targetMoleculeDisplay.innerHTML = `Target: <span style="color: #d32f2f;">${targetCompound.name}</span>`;
+            clearSelection(); // Clear any previous selection
+            atomsOnScreen = []; // Clear existing atoms for a fresh start
+            lastSpawnTime = Date.now(); // Reset spawn timer
+            displayGameMessage("New molecule! Find the atoms to build it!", "info");
+        }
+
+        /**
+         * Starts the game.
+         */
+        function startGame() {
+            score = 0;
+            level = 1;
+            lives = MAX_LIVES; // Reset lives to 3
+            gameRunning = true;
+            updateScore(); // Initial call to display 3 hearts
+
+            // Initialize and shuffle compounds for unique suggestions
+            shuffledCompounds = [...compounds]; // Create a shallow copy
+            shuffleArray(shuffledCompounds);
+            currentCompoundIndex = 0;
+
+            startGameButton.classList.add('hidden');
+            combineButton.classList.remove('hidden');
+            clearSelectionButton.classList.remove('hidden');
+            restartGameButton.classList.remove('hidden');
+            startNextRound(); // Start the first round
+            gameLoop(); // Start the animation loop
+        }
+
+        /**
+         * Ends the current game.
+         * @param {string} message - The game over message.
+         */
+        function endGame(message) {
+            gameRunning = false;
+            cancelAnimationFrame(animationFrameId); // Stop the animation loop
+            displayGameMessage(message + ` Final Score: ${score}`, "error");
+            startGameButton.classList.remove('hidden');
+            combineButton.classList.add('hidden');
+            clearSelectionButton.classList.add('hidden');
+            restartGameButton.classList.remove('hidden'); // Show restart button
+            targetMoleculeDisplay.textContent = "Game Over!";
+        }
+
+        /**
+         * Resets and restarts the game.
+         */
+        function restartGame() {
+            endGame("Game restarted!"); // Stop current game loop first
+            startGame();
+        }
+
+        // --- Event Listeners ---
+        window.addEventListener('resize', resizeCanvas);
+        canvas.addEventListener('click', handleCanvasClick);
+        startGameButton.addEventListener('click', startGame);
+        combineButton.addEventListener('click', handleCombine);
+        clearSelectionButton.addEventListener('click', clearSelection);
+        restartGameButton.addEventListener('click', restartGame);
+
+        // Initial setup on window load
+        window.onload = function() {
+            resizeCanvas(); // Set initial canvas size
+            displayGameMessage("Welcome to Molecule Matchmaker! Click 'Start Game' to begin.", "info");
+            updateScore(); // Ensure hearts are displayed even before game starts if needed
+        };
+    </script>
+</body>
+</html>
